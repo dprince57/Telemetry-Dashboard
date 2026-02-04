@@ -27,6 +27,10 @@ def run_sim(car: CarState, dt: float, track: TrackHandler.Track, sim_t: float) -
 
     #Sections will be commented out for easier manipulation of data and code
 
+    #----------Variables I think I need-----------
+
+    old_pos = car.track_position
+
     #----------Velocity and distance--------------
     
     if car.velocity_mps < 75.0:
@@ -36,14 +40,25 @@ def run_sim(car: CarState, dt: float, track: TrackHandler.Track, sim_t: float) -
     else:
         car.track_position += car.velocity_mps * dt
 
+    #----------Lapping logic----------------------
 
     if car.track_position >= track.lap_length_meter:
+ 
+        minutes = sim_t/60
+        seconds = sim_t%60
+        print(f"Current Time:{minutes:.0f}:{seconds:.2f}")
+        
+
+        distance_from_start = track.lap_length_meter - car.track_position
+        distance_traveled = car.track_position - old_pos
+        time_frac = distance_from_start / distance_traveled if distance_traveled > 0 else 0.0
+        crossing_time = (sim_t - dt) + time_frac * dt
         car.laps += 1
-        car.best_lap = sim_t
+        car.best_lap = crossing_time
         car.track_position -= track.lap_length_meter
 
 
-    print(f"Speed: {car.velocity_mps}, Track_position: {car.track_position}")
+#    print(f"Speed: {car.velocity_mps}, Track_position: {car.track_position}")
     return{"t": sim_t, "car_id":car.car_id, "v_mps":car.velocity_mps, "x_m":car.track_position,
             "laps":car.laps,}
 
