@@ -16,6 +16,7 @@ class CarState:
     track_position: float = 0.0
     acceleration_mps: float = 19.6
     laps: int = 0
+    best_lap: float = 0.0
 
 def init_car(car_id: int, spec_path: str) -> CarState:
     with open(spec_path,"r") as f:
@@ -23,16 +24,22 @@ def init_car(car_id: int, spec_path: str) -> CarState:
     return CarState(car_id = car_id, carSpec = raw_spec)
 
 def run_sim(car: CarState, dt: float, track: TrackHandler.Track, sim_t: float) -> dict | None:
+
+    #Sections will be commented out for easier manipulation of data and code
+
+    #----------Velocity and distance--------------
     
     if car.velocity_mps < 75.0:
-        car.velocity_mps = car.acceleration_mps * dt
+        old_speed = car.velocity_mps
+        car.velocity_mps += car.acceleration_mps * dt
+        car.track_position += ((car.velocity_mps+old_speed)/2) * dt
+    else:
+        car.track_position += car.velocity_mps * dt
 
 
-
-    car.track_position += car.velocity_mps * dt
-    
     if car.track_position >= track.lap_length_meter:
         car.laps += 1
+        car.best_lap = sim_t
         car.track_position -= track.lap_length_meter
 
 
