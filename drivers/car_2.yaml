@@ -1,0 +1,9 @@
+name: "Lando Norris"
+car_id: 1
+
+reaction_time_s: 0.35
+throttle: 0.92
+corner_target_multiplier: 0.94  
+brake_early_m: 30                
+aggression: 0.85
+light_reaction: 0.9

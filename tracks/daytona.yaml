@@ -1,0 +1,35 @@
+name: daytona_trioval
+lap_length_m: 4023.0
+segments:
+  - type: straight
+    start_m: 0
+    end_m: 900
+    speed_limit_mps: 95
+    label: frontstretch
+
+  - type: corner
+    start_m: 900
+    end_m: 1650
+    radius_m: 350
+    direction: left
+    label: turn1_2
+
+  - type: straight
+    start_m: 1650
+    end_m: 2500
+    speed_limit_mps: 98
+    label: backstretch
+
+  - type: corner
+    start_m: 2500
+    end_m: 3300
+    radius_m: 350
+    direction: left
+    label: turn3_4
+
+  - type: straight
+    start_m: 3300
+    end_m: 4023
+    speed_limit_mps: 95
+    label: trioval
+

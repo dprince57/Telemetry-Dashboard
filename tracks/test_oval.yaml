@@ -1,0 +1,36 @@
+name: "Simple Oval"
+lap_length_m: 1200
+
+# Segments are [start_s, end_s)
+segments:
+  - type: straight
+    start_m: 0
+    end_m: 350
+    speed_limit_mps: 100   # just a cap for the toy sim
+
+  - type: corner
+    start_m: 350
+    end_m: 500
+    target_speed_mps: 22  # "ideal" corner speed
+    label: "T1"
+    radius_m: 282
+    direction: left
+
+  - type: straight
+    start_m: 500
+    end_m: 900
+    speed_limit_mps: 100
+
+  - type: corner
+    start_m: 900
+    end_m: 1050
+    target_speed_mps: 20
+    label: "T2"
+    radius_m: 282
+    direction: left
+
+  - type: straight
+    start_m: 1050
+    end_m: 1200
+    speed_limit_mps: 100
+

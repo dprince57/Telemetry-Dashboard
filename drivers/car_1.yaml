@@ -1,0 +1,10 @@
+name: "Oscar Piastri"
+car_id: 81
+reaction_time_s: 0.20
+
+throttle: 0.95                   # 0..1: how quickly driver applies throttle
+corner_target_multiplier: 1.00   # 0..1: 0 driver take corner at slowest speed, 1 is perfect entry
+brake_early_m: 0                 # How early driver applies brakes
+aggression: 1.00                 # affects how quickly it returns to throttle
+light_reaction: 0.9              #How quickly a driver will accererale off the start
+

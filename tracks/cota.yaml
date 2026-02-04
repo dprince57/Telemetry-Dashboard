@@ -1,0 +1,62 @@
+name: cota
+lap_length_meter: 5513.0
+segments:
+  - type: straight
+    s_meter: 0
+    e_meter: 600
+    speed_limit_mps: 92
+    label: start_finish
+
+  - type: corner
+    s_meter: 600
+    e_meter: 880
+    radius_meter: 70
+    direction: left
+    label: turn1
+
+  - type: straight
+    s_meter: 880
+    e_meter: 1350
+    speed_limit_mps: 85
+    label: esses_entry
+
+  - type: corner
+    s_meter: 1350
+    e_meter: 2000
+    radius_meter: 120
+    direction: right
+    label: esses
+
+  - type: corner
+    s_meter: 2000
+    e_meter: 2550
+    radius_meter: 95
+    direction: left
+    label: mid_complex
+
+  - type: straight
+    s_meter: 2550
+    e_meter: 3300
+    speed_limit_mps: 95
+    label: back_straight
+
+  - type: corner
+    s_meter: 3300
+    e_meter: 3700
+    radius_meter: 80
+    direction: left
+    label: stadium
+
+  - type: corner
+    s_meter: 3700
+    e_meter: 4200
+    radius_meter: 90
+    direction: right
+    label: stadium_exit
+
+  - type: straight
+    s_meter: 4200
+    e_meter: 5513
+    speed_limit_mps: 92
+    label: final_sector
+
