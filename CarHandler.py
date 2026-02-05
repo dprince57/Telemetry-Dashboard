@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from pathlib import Path
 import TrackHandler
 import math
+import time
 
 G = 9.81
 
@@ -39,7 +40,7 @@ def init_car(car_id: int, spec_path: str) -> CarState:
 def run_sim(car: CarState, dt: float, track: TrackHandler.Track, sim_t: float) -> dict | None:
 
     #Sections will be commented out for easier manipulation of data and code
-
+    start_time = time.time()
     #----------Determine future events now!-------
     if car.track_position >= car.braking_zone:
         found = False
@@ -98,7 +99,13 @@ def run_sim(car: CarState, dt: float, track: TrackHandler.Track, sim_t: float) -
         car.track_position -= track.lap_length_meter
 
 
-    print(f"Speed: {car.velocity_mps}, Track_position: {car.track_position}\nBraking meters and zone: {car.braking_meter} {car.braking_zone}\nVelo_target: {car.velo_target}")
+    #print(f"Speed: {car.velocity_mps}, Track_position: {car.track_position}\nBraking meters and zone: {car.braking_meter} {car.braking_zone}\nVelo_target: {car.velo_target}")
+    
+    end_time = time.time()
+    process_time = end_time - start_time
+    print(f"process time: {process_time:.4f}")
+
     return{"t": sim_t, "car_id":car.car_id, "v_mps":car.velocity_mps, "x_m":car.track_position,
             "laps":car.laps,}
 
+    
