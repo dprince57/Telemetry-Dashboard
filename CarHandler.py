@@ -8,16 +8,20 @@ import time
 G = 9.81
 
 #hard coded physics for now.
-mu = 1.3
 a_brake = 10
 buffer_m = 5
 
+@dataclass
+class TireState:
+    temp_C: float = 70.0
+    wear: float = 0.0
 
 @dataclass
 class CarSpec:
     fuel_onboard_kg: float
     car_weight_kg: float
-
+    tire_file: str
+    
 @dataclass
 class CarState:
     car_id: str
@@ -28,9 +32,15 @@ class CarState:
     laps: int = 0
     lap_start_time: float = 0.0
     best_lap: float = 0.0
-    braking_zone: float = 0.0
+    braking_zone: float = -1.0
     braking_meter: float = 0.0
     velo_target: float = 0.0
+    tire_FL: TireState = TireState()
+    tire_FR: TireState = TireState()
+    tire_RL: TireState = TireState()
+    tire_RR: TireState = TireState()
+    tire_params: dict | None = None
+    mu_effective: float = 1.3
 
 def init_car(car_id: int, spec_path: str) -> CarState:
     with open(spec_path,"r") as f:
@@ -48,7 +58,7 @@ def run_sim(car: CarState, dt: float, track: TrackHandler.Track, sim_t: float) -
             if seg.type == "corner" and seg.s_meter > car.track_position:
                 car.braking_zone = seg.s_meter
                 car.velo_target = math.sqrt(mu * G * seg.radius_meter)
-                print(car.braking_zone)
+                #print(car.braking_zone)
                 found = True
                 break
         if not found:
@@ -85,8 +95,8 @@ def run_sim(car: CarState, dt: float, track: TrackHandler.Track, sim_t: float) -
 
     if car.track_position >= track.lap_length_meter:
  
-        minutes = sim_t/60
-        seconds = sim_t%60
+        minutes = sim_t / 60
+        seconds = sim_t % 60
         print(f"Current Time:{minutes:.0f}:{seconds:.2f}")
         
         #------------calculate actual lap time based on distance past the line----------------i
@@ -98,13 +108,14 @@ def run_sim(car: CarState, dt: float, track: TrackHandler.Track, sim_t: float) -
         car.best_lap = crossing_time
         car.track_position -= track.lap_length_meter
 
-
-    #print(f"Speed: {car.velocity_mps}, Track_position: {car.track_position}\nBraking meters and zone: {car.braking_meter} {car.braking_zone}\nVelo_target: {car.velo_target}")
+    '''
+    print(f"Speed: {car.velocity_mps}, Track_position: {car.track_position}\nBraking meters and zone: {car.braking_meter} {car.braking_zone}\nVelo_target: {car.velo_target}")
     
     end_time = time.time()
     process_time = end_time - start_time
     print(f"process time: {process_time:.4f}")
 
+    '''
     return{"t": sim_t, "car_id":car.car_id, "v_mps":car.velocity_mps, "x_m":car.track_position,
             "laps":car.laps,}
 

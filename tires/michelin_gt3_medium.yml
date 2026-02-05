@@ -1,0 +1,42 @@
+name: "Michelin GT3 Slick Medium"
+units: "SI"
+
+# Base friction level at reference load & optimal temp
+mu_peak_ref: 1.55
+mu_slide_ref: 1.30          # sliding friction when over the peak
+
+# Reference normal load (per tire) where mu_peak_ref applies
+Fz_ref_N: 3500
+
+# Load sensitivity: mu decreases as load increases
+load_sensitivity:
+  k_mu: 0.12                 # higher = more drop with load
+
+# Lateral force shape vs slip angle (radians)
+lateral:
+  C_alpha_ref: 90000         # N/rad at Fz_ref
+  shape_k: 3.5               # saturation sharpness
+  peak_slip_rad: 0.09        # ~5.2 degrees
+
+# Longitudinal force shape vs slip ratio
+longitudinal:
+  C_kappa_ref: 110000        # N per slip (approx)
+  shape_k: 4.0
+  peak_slip: 0.11
+
+# Temperature model (very simplified)
+temperature:
+  optimal_C: 95
+  cold_C: 40
+  hot_C: 125
+  grip_drop_cold: 0.20       # lose up to 20% when cold
+  grip_drop_hot: 0.25        # lose up to 25% when overheated
+
+# Wear model
+wear:
+  mu_drop_at_full_wear: 0.30 # 30% loss at wear=1.0
+
+# Rolling resistance (optional)
+rr:
+  Crr: 0.015
+

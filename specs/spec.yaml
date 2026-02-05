@@ -1,2 +1,3 @@
 fuel_onboard_kg: 76.0
 car_weight_kg: 786.0
+tire_file: "tires/michelin_gt3_medium.yml"
