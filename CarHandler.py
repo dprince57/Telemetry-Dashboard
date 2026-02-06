@@ -115,7 +115,7 @@ def run_sim(car: CarState, dt: float, track: TrackHandler.Track, sim_t: float) -
         car.track_position -= track.lap_length_meter
 
     #'''
-    print(f"Speed: {car.velocity_mps}, Track_position: {car.track_position}\nBraking meters and zone: {car.braking_meter} {car.braking_zone}\nVelo_target: {car.velo_target}")
+    print(f"Speed: {car.velocity_mps:.1f}, Track_position: {car.track_position:.1f}\nBraking meters and zone: {car.braking_meter:.1f} {car.braking_zone}\nVelo_target: {car.velo_target:.1f}")
     
     end_time = time.time()
     process_time = end_time - start_time
