@@ -1,0 +1,5 @@
+a_brake_base: 11.0
+fade_start_C: 650
+fade_end_C: 950
+fade_min: 0.70
+

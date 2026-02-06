@@ -1,0 +1,7 @@
+fuel_onboard_kg: 90.0
+car_weight_kg: 1320.0
+tire_file: "specs/tires/michelin_gt3_medium.yaml"
+aero_file: "specs/aero/gt3_low.yaml"
+engine_file: "specs/engines/gt3_v8.yaml"
+brake_file: "specs/brakes/gt3_steel.yaml"
+

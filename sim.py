@@ -10,7 +10,7 @@ Delta_Time = 0.05 #roughly 5Hz
 
 def main():
     track = td.load_track("tracks/cota.yaml", "weather/weather.yaml")
-    car = ch.init_car("81", "specs/spec.yaml")
+    car = ch.init_car("81", "specs/gt3_spec.yaml")
 
     max_laps = 1
     sim_t = 0.0

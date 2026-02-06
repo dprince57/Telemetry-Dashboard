@@ -1,5 +1,5 @@
 import yaml
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 import TrackHandler
 import math
@@ -101,10 +101,6 @@ def run_sim(car: CarState, dt: float, track: TrackHandler.Track, sim_t: float) -
                     car.braking_zone = seg.s_meter
                     car.velo_target = math.sqrt(car.mu_effective * G * seg.radius_meter)
                     break
-    if car.velocity_mps > car.velo_target:
-        car.braking_meter = (car.velocity_mps**2 - car.velo_target**2) / (2 * a_brake)
-    else:
-        car.braking_meter = 0.0
 
     #----------Variables I think I need-----------
 
@@ -169,18 +165,241 @@ def run_sim(car: CarState, dt: float, track: TrackHandler.Track, sim_t: float) -
 
 
     #----------Velocity and distance and braking?--------------
-    
-    distance_to_zone = car.braking_zone - car.track_position
-    if distance_to_zone < 0:
-        distance_to_zone += track.lap_length_meter
-    if distance_to_zone <= car.braking_meter + buffer_m:
-        car.velocity_mps = max(car.velo_target, car.velocity_mps - a_brake * dt)
-        car.track_position += ((car.velocity_mps+old_speed)/2) * dt
-    elif car.velocity_mps < 75.0:
-        car.velocity_mps += car.acceleration_mps * dt
-        car.track_position += ((car.velocity_mps+old_speed)/2) * dt
+
+    a_brake_base = 10.0
+    fade_start = 650.0
+    fade_end = 950.0
+    fade_min = 0.70
+    if car.brake_params is not None:
+        a_brake_base = float(car.brake_params.get("a_brake_base", a_brake_base))
+        fade_start = float(car.brake_params.get("fade_start_C", fade_start))
+        fade_end = float(car.brake_params.get("fade_end_C", fade_end))
+        fade_min = float(car.brake_params.get("fade_min", fade_min))
+
+    brake_temp_avg = (car.brake_FL_C + car.brake_FR_C + car.brake_RL_C + car.brake_RR_C) / 4.0
+    if brake_temp_avg <= fade_start:
+        brake_fade = 1.0
+    elif brake_temp_avg >= fade_end:
+        brake_fade = fade_min
     else:
-        car.track_position += car.velocity_mps * dt
+        brake_fade = 1.0 - (brake_temp_avg - fade_start) * ((1.0 - fade_min) / max(1e-6, (fade_end - fade_start)))
+
+    mu_ref = 1.30
+    grip_scale = max(0.50, min(1.50, car.mu_effective / max(1e-6, mu_ref)))
+    a_brake_eff = max(0.5, a_brake_base * grip_scale * brake_fade)
+
+    need_new_corner = (car.active_corner_exit < 0) or (car.track_position >= car.active_corner_exit)
+    if need_new_corner:
+        found = False
+
+        for seg in track.segments:
+            if seg.type == "corner" and seg.s_meter > car.track_position:
+                start_s = seg.s_meter
+                seg_len = getattr(seg, "length_meter", None)
+                end_s = getattr(seg, "end_s_meter", None)
+                apex_s = getattr(seg, "apex_s_meter", None)
+
+                if end_s is None:
+                    if seg_len is not None:
+                        end_s = start_s + float(seg_len)
+                    else:
+                        end_s = start_s + 60.0  # fallback: 60m corner
+
+                if apex_s is None:
+                    apex_s = start_s + 0.5 * (end_s - start_s)
+
+                car.active_corner_start = start_s
+                car.active_corner_apex = apex_s
+                car.active_corner_exit = end_s
+                car.past_apex = False
+
+                car.velo_target = math.sqrt(max(0.0, car.mu_effective * G * seg.radius_meter))
+                found = True
+                break
+
+        if not found:
+            for seg in track.segments:
+                if seg.type == "corner":
+                    start_s = seg.s_meter
+                    seg_len = getattr(seg, "length_meter", None)
+                    end_s = getattr(seg, "end_s_meter", None)
+                    apex_s = getattr(seg, "apex_s_meter", None)
+
+                    if end_s is None:
+                        if seg_len is not None:
+                            end_s = start_s + float(seg_len)
+                        else:
+                            end_s = start_s + 60.0
+
+                    if apex_s is None:
+                        apex_s = start_s + 0.5 * (end_s - start_s)
+
+                    car.active_corner_start = start_s
+                    car.active_corner_apex = apex_s
+                    car.active_corner_exit = end_s
+                    car.past_apex = False
+
+                    car.velo_target = math.sqrt(max(0.0, car.mu_effective * G * seg.radius_meter))
+                    break
+    if car.velocity_mps > car.velo_target and car.velo_target > 0:
+        car.braking_meter = (car.velocity_mps**2 - car.velo_target**2) / (2.0 * max(1e-6, a_brake_eff))
+    else:
+        car.braking_meter = 0.0
+
+    dist_to_apex = car.active_corner_apex - car.track_position
+    if dist_to_apex < 0:
+        dist_to_apex += track.lap_length_meter
+
+    dist_to_exit = car.active_corner_exit - car.track_position
+    if dist_to_exit < 0:
+        dist_to_exit += track.lap_length_meter
+
+    if dist_to_apex <= 1.0:
+        car.past_apex = True
+
+    old_pos = car.track_position
+    old_v = car.velocity_mps
+
+    should_brake = (not car.past_apex) and (dist_to_apex <= car.braking_meter + buffer_m) and (car.velocity_mps > car.velo_target)
+    should_throttle = (car.past_apex or (not should_brake))
+
+    car.brake = 1.0 if should_brake else 0.0
+    car.throttle = 1.0 if should_throttle else 0.0
+
+    ep = car.engine_params or {}
+    idle_rpm = float(ep.get("idle_rpm", 1200.0))
+    redline_rpm = float(ep.get("redline_rpm", 9000.0))
+    shift_rpm = float(ep.get("shift_rpm", 8200.0))
+    downshift_rpm = float(ep.get("downshift_rpm", 2500.0))
+
+    gear_ratios = ep.get("gear_ratios", [3.20, 2.30, 1.80, 1.45, 1.20, 1.00])
+    final_drive = float(ep.get("final_drive", 3.70))
+    wheel_radius_m = float(ep.get("wheel_radius_m", 0.33))
+    driveline_eff = float(ep.get("drivetrain_eff", 0.92))
+
+    top_speed_cap = float(ep.get("top_speed_cap_mps", 1e9))
+
+    max_gear = max(1, len(gear_ratios))
+    car.gear = max(1, min(max_gear, car.gear))
+
+    shift_time = float(ep.get("shift_time_s", 0.18))
+    if car.shift_timer > 0.0:
+        car.shift_timer = max(0.0, car.shift_timer - dt)
+
+    wheel_omega = car.velocity_mps / max(1e-6, wheel_radius_m)  # rad/s
+    gear_ratio = float(gear_ratios[car.gear - 1])
+    rpm_from_speed = wheel_omega * gear_ratio * final_drive * (60.0 / (2.0 * math.pi))
+    car.rpm = max(idle_rpm, rpm_from_speed)
+
+    if car.shift_timer <= 0.0:
+        if car.throttle > 0.6 and car.rpm >= shift_rpm and car.gear < max_gear:
+            car.gear += 1
+            car.shift_timer = shift_time
+        elif car.brake > 0.2 and car.rpm <= downshift_rpm and car.gear > 1:
+            car.gear -= 1
+            car.shift_timer = shift_time
+
+    gear_ratio = float(gear_ratios[car.gear - 1])
+    rpm_from_speed = wheel_omega * gear_ratio * final_drive * (60.0 / (2.0 * math.pi))
+    car.rpm = max(idle_rpm, min(redline_rpm, rpm_from_speed))
+
+    torque_curve = ep.get("torque_curve", [[1000, 250], [3000, 380], [6000, 420], [8000, 390], [9000, 320]])
+    rpm_now = car.rpm
+
+    torque_Nm = float(torque_curve[0][1])
+    if rpm_now <= float(torque_curve[0][0]):
+        torque_Nm = float(torque_curve[0][1])
+    elif rpm_now >= float(torque_curve[-1][0]):
+        torque_Nm = float(torque_curve[-1][1])
+    else:
+        for i in range(len(torque_curve) - 1):
+            r0 = float(torque_curve[i][0])
+            t0 = float(torque_curve[i][1])
+            r1 = float(torque_curve[i + 1][0])
+            t1 = float(torque_curve[i + 1][1])
+            if r0 <= rpm_now <= r1:
+                alpha = (rpm_now - r0) / max(1e-6, (r1 - r0))
+                torque_Nm = t0 + alpha * (t1 - t0)
+                break
+
+    torque_Nm *= max(0.0, min(1.0, car.throttle))
+
+    if car.shift_timer > 0.0:
+        torque_Nm = 0.0
+
+    wheel_torque = torque_Nm * gear_ratio * final_drive * driveline_eff
+    F_drive = wheel_torque / max(1e-6, wheel_radius_m)
+
+    Fz_total = mass * G + F_down
+    F_trac_max = car.mu_effective * Fz_total
+    F_drive = max(-F_trac_max, min(F_trac_max, F_drive))
+
+    F_brake = car.brake * a_brake_eff * mass
+
+    Crr = 0.015
+    if tp is not None and "rr" in tp and "Crr" in tp["rr"]:
+        Crr = float(tp["rr"]["Crr"])
+    F_rr = Crr * Fz_total
+
+    F_net = F_drive - F_drag - F_rr - F_brake
+
+    a = F_net / max(1e-6, mass)
+
+    car.velocity_mps = max(0.0, min(top_speed_cap, car.velocity_mps + a * dt))
+
+    car.track_position += ((old_v + car.velocity_mps) / 2.0) * dt
+
+    #----------Heating and cooling----------------
+
+    ambient = 25.0
+    brake_cool = float(ep.get("brake_cool_rate", 0.10))  # per sec toward ambient
+    brake_heat_per_brake = float(ep.get("brake_heat_gain", 120.0))  # C/sec at full brake (tune)
+
+    for attr in ["brake_FL_C", "brake_FR_C", "brake_RL_C", "brake_RR_C"]:
+        cur = getattr(car, attr)
+        cur -= brake_cool * (cur - ambient) * dt
+        setattr(car, attr, max(ambient, cur))
+
+    if car.brake > 0.0:
+        heat = brake_heat_per_brake * car.brake * dt
+        car.brake_FL_C += heat
+        car.brake_FR_C += heat
+        car.brake_RL_C += 0.6 * heat
+        car.brake_RR_C += 0.6 * heat
+
+    cool_rate = float(ep.get("tire_cool_rate", 0.08))
+    heat_brake = float(ep.get("tire_heat_brake", 18.0))
+    heat_accel = float(ep.get("tire_heat_accel", 8.0))
+    wear_brake = float(ep.get("tire_wear_brake", 0.0005))
+    wear_accel = float(ep.get("tire_wear_accel", 0.0002))
+
+    for tire in [car.tire_FL, car.tire_FR, car.tire_RL, car.tire_RR]:
+        tire.temp_C -= cool_rate * (tire.temp_C - ambient) * dt
+        tire.temp_C = max(0.0, tire.temp_C)
+
+    if car.brake > 0.0:
+        car.tire_FL.temp_C += heat_brake * dt
+        car.tire_FR.temp_C += heat_brake * dt
+        car.tire_RL.temp_C += 0.6 * heat_brake * dt
+        car.tire_RR.temp_C += 0.6 * heat_brake * dt
+
+        car.tire_FL.wear += wear_brake * dt
+        car.tire_FR.wear += wear_brake * dt
+        car.tire_RL.wear += 0.6 * wear_brake * dt
+        car.tire_RR.wear += 0.6 * wear_brake * dt
+    elif car.throttle > 0.0:
+        car.tire_RL.temp_C += heat_accel * dt
+        car.tire_RR.temp_C += heat_accel * dt
+        car.tire_FL.temp_C += 0.4 * heat_accel * dt
+        car.tire_FR.temp_C += 0.4 * heat_accel * dt
+
+        car.tire_RL.wear += wear_accel * dt
+        car.tire_RR.wear += wear_accel * dt
+        car.tire_FL.wear += 0.4 * wear_accel * dt
+        car.tire_FR.wear += 0.4 * wear_accel * dt
+
+    for tire in [car.tire_FL, car.tire_FR, car.tire_RL, car.tire_RR]:
+        tire.wear = max(0.0, min(1.0, tire.wear))
 
     #----------Lapping logic----------------------
 
@@ -199,7 +418,7 @@ def run_sim(car: CarState, dt: float, track: TrackHandler.Track, sim_t: float) -
         car.best_lap = crossing_time
         car.track_position -= track.lap_length_meter
 
-    #'''
+    '''
     print(f"Speed: {car.velocity_mps:.1f}, Track_position: {car.track_position:.1f}\nBraking meters and zone: {car.braking_meter:.1f} {car.braking_zone}\nVelo_target: {car.velo_target:.1f}")
     
     end_time = time.time()
@@ -207,7 +426,28 @@ def run_sim(car: CarState, dt: float, track: TrackHandler.Track, sim_t: float) -
     print(f"process time: {process_time:.4f}")
 
     #'''
-    return{"t": sim_t, "car_id":car.car_id, "v_mps":car.velocity_mps, "x_m":car.track_position,
-            "laps":car.laps,}
-
+    print(
+        f"Speed: {car.velocity_mps:.1f} m/s, Pos: {car.track_position:.1f} m | "
+        f"mu_eff: {car.mu_effective:.2f} | "
+        f"tgt(apex): {car.velo_target:.1f} | "
+        f"d_to_apex: {dist_to_apex:.1f} d_need: {car.braking_meter:.1f} | "
+        f"throttle: {car.throttle:.2f} brake: {car.brake:.2f} | "
+        f"gear: {car.gear} rpm: {car.rpm:.0f} shiftT: {car.shift_timer:.2f} | "
+        f"brkTavg: {brake_temp_avg:.0f}C fade:{brake_fade:.2f}"
+    )
+    return {
+        "t": sim_t,
+        "car_id": car.car_id,
+        "v_mps": car.velocity_mps,
+        "x_m": car.track_position,
+        "laps": car.laps,
+        "mu_eff": car.mu_effective,
+        "throttle": car.throttle,
+        "brake": car.brake,
+        "gear": car.gear,
+        "rpm": car.rpm,
+        "brake_temp_avg_C": brake_temp_avg,
+        "downforce_N": F_down,
+        "drag_N": F_drag,
+    }
     
