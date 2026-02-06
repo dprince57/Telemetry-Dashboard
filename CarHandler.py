@@ -35,17 +35,23 @@ class CarState:
     braking_zone: float = -1.0
     braking_meter: float = 0.0
     velo_target: float = 0.0
-    tire_FL: TireState = TireState()
-    tire_FR: TireState = TireState()
-    tire_RL: TireState = TireState()
-    tire_RR: TireState = TireState()
+    tire_FL: TireState = TireState
+    tire_FR: TireState = TireState
+    tire_RL: TireState = TireState
+    tire_RR: TireState = TireState
     tire_params: dict | None = None
     mu_effective: float = 1.3
 
 def init_car(car_id: int, spec_path: str) -> CarState:
     with open(spec_path,"r") as f:
         raw_spec = yaml.safe_load(f)
-    return CarState(car_id = car_id, carSpec = raw_spec)
+    spec = CarSpec(**raw_spec)
+
+    car = CarState(car_id=str(car_id), carSpec=spec)
+    with open(spec.tire_file, "r") as tf:
+        car.tire_params = yaml.safe_load(tf)
+
+    return car
 
 def run_sim(car: CarState, dt: float, track: TrackHandler.Track, sim_t: float) -> dict | None:
 
@@ -57,7 +63,7 @@ def run_sim(car: CarState, dt: float, track: TrackHandler.Track, sim_t: float) -
         for seg in track.segments:
             if seg.type == "corner" and seg.s_meter > car.track_position:
                 car.braking_zone = seg.s_meter
-                car.velo_target = math.sqrt(mu * G * seg.radius_meter)
+                car.velo_target = math.sqrt(car.mu_effective * G * seg.radius_meter)
                 #print(car.braking_zone)
                 found = True
                 break
@@ -65,7 +71,7 @@ def run_sim(car: CarState, dt: float, track: TrackHandler.Track, sim_t: float) -
             for seg in track.segments:
                 if seg.type == "corner":
                     car.braking_zone = seg.s_meter
-                    car.velo_target = math.sqrt(mu * G * seg.radius_meter)
+                    car.velo_target = math.sqrt(car.mu_effective * G * seg.radius_meter)
                     break
     if car.velocity_mps > car.velo_target:
         car.braking_meter = (car.velocity_mps**2 - car.velo_target**2) / (2 * a_brake)
@@ -108,14 +114,14 @@ def run_sim(car: CarState, dt: float, track: TrackHandler.Track, sim_t: float) -
         car.best_lap = crossing_time
         car.track_position -= track.lap_length_meter
 
-    '''
+    #'''
     print(f"Speed: {car.velocity_mps}, Track_position: {car.track_position}\nBraking meters and zone: {car.braking_meter} {car.braking_zone}\nVelo_target: {car.velo_target}")
     
     end_time = time.time()
     process_time = end_time - start_time
     print(f"process time: {process_time:.4f}")
 
-    '''
+    #'''
     return{"t": sim_t, "car_id":car.car_id, "v_mps":car.velocity_mps, "x_m":car.track_position,
             "laps":car.laps,}
 
