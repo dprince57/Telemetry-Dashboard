@@ -1,5 +1,7 @@
 name: cota
 lap_length_meter: 5513.0
+pit_entry_position: 5400.0
+pit_exit_position: 200.0
 segments:
   - type: straight
     s_meter: 0
