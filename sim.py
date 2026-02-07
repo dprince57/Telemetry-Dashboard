@@ -23,7 +23,7 @@ def main():
         sim_t += Delta_Time
         if car.laps >= max_laps:
             break
-        print(sim_t)
+        #print(sim_t)
         time.sleep(Delta_Time)
 
     end_time = time.time()

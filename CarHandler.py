@@ -498,6 +498,8 @@ def _calculate_driving_force(car: CarState, mass: float, F_down: float, engine_p
 
     F_net = F_drive - F_drag - F_rr - F_brake
     a = F_net / max(1e-6, mass)
+    max_accel = 2.0 * G 
+    a = max(-max_accel, min(max_accel, a))
 
     return F_drive, F_brake, F_rr, F_drag, F_net, a
 
@@ -641,7 +643,7 @@ def run_sim(car: CarState, dt: float, track: TrackHandler.Track, sim_t: float) -
     _handle_lap_completion(car, track, dt, sim_t, old_pos)
 
     # ========== Debug output ==========
-    '''print(
+    print(
         f"Speed: {car.velocity_mps:.1f} m/s, Pos: {car.track_position:.1f} m | "
         f"mu_eff: {car.mu_effective:.2f} | "
         f"tgt(apex): {car.velo_target:.1f} | "
@@ -649,7 +651,7 @@ def run_sim(car: CarState, dt: float, track: TrackHandler.Track, sim_t: float) -
         f"throttle: {car.throttle:.2f} brake: {car.brake:.2f} | "
         f"gear: {car.gear} rpm: {car.rpm:.0f} shiftT: {car.shift_timer:.2f} | "
         f"brkTavg: {brake_temp_avg:.0f}C fade:{brake_fade:.2f}"
-    )'''
+    )
 
     end_time = time.time()
     process_time = end_time - start_time
