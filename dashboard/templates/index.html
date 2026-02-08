@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <title>Pit Wall</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+  <script>
+    // Server-provided config
+    window.PITWALL = {
+      mode: "{{ mode }}",
+      playerIds: {{ player_ids|tojson }},
+      track: {{ track|tojson }}
+    };
+  </script>
+</head>
+
+<body>
+  <div class="topbar">
+    <div class="brand">
+      <span class="dot"></span>
+      <div>
+        <div class="brandTitle">PIT WALL</div>
+        <div class="sub">2-driver cards • full-field map • pit entry/exit markers</div>
+      </div>
+    </div>
+
+    <div class="pillrow">
+      <div class="pill">Mode: <b id="mode">{{ mode }}</b></div>
+      <div class="pill">Cars tracked: <b id="carsTracked">0</b></div>
+      <div class="pill" id="updatedAt">waiting…</div>
+      <button class="btn danger" id="pitAllBtn">PIT ALL (players)</button>
+    </div>
+  </div>
+
+  <div class="layout">
+    <!-- LEFT -->
+    <section class="panel">
+      <header class="panelHead">
+        <div>
+          <div class="title">Telemetry</div>
+          <div class="hint">driver summaries + track map</div>
+        </div>
+        <div class="hint">players: <span id="playersList"></span></div>
+      </header>
+
+      <div class="panelBody">
+        <div class="driverCards" id="driverCards"></div>
+
+        <div class="spacer"></div>
+
+        <div class="mapWrap">
+          <svg viewBox="0 0 900 520">
+            <path id="trackPathGlow" class="trackGlow"
+              d="M140,300
+                 C140,190 230,120 340,140
+                 C420,155 450,220 510,220
+                 C610,220 640,150 725,165
+                 C820,185 835,285 760,330
+                 C690,372 645,305 585,330
+                 C520,360 525,435 440,425
+                 C350,415 355,330 285,330
+                 C220,330 200,390 160,395
+                 C120,400 110,355 140,300 Z"/>
+            <path id="trackPath" class="trackPath"
+              d="M140,300
+                 C140,190 230,120 340,140
+                 C420,155 450,220 510,220
+                 C610,220 640,150 725,165
+                 C820,185 835,285 760,330
+                 C690,372 645,305 585,330
+                 C520,360 525,435 440,425
+                 C350,415 355,330 285,330
+                 C220,330 200,390 160,395
+                 C120,400 110,355 140,300 Z"/>
+
+            <!-- Pit markers -->
+            <circle id="pitEntryDot" class="pitMark" cx="0" cy="0"></circle>
+            <text id="pitEntryText" class="pitText" x="0" y="0">PIT IN</text>
+
+            <circle id="pitExitDot" class="pitMark" cx="0" cy="0"></circle>
+            <text id="pitExitText" class="pitText" x="0" y="0">PIT OUT</text>
+
+            <!-- Dynamic car dots -->
+            <g id="dotsLayer"></g>
+          </svg>
+
+          <div class="legend">
+            <div class="lg"><span class="sw"></span> Player 0</div>
+            <div class="lg"><span class="sw cyan"></span> Player 1</div>
+            <div class="lg"><span class="sw ai"></span> AI</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- RIGHT -->
+    <section class="panel">
+      <header class="panelHead">
+        <div>
+          <div class="title">Driver Profile</div>
+          <div class="hint">click a player card</div>
+        </div>
+        <div class="hint" id="selectedLabel">selected: --</div>
+      </header>
+
+      <div class="panelBody">
+        <div class="profile">
+          <div class="profileTop">
+            <div class="avatar" id="avatar">D?</div>
+            <div>
+              <div class="pname" id="pname">Select a driver</div>
+              <div class="pmuted" id="pmeta">waiting for telemetry…</div>
+            </div>
+          </div>
+
+          <div class="profileStats">
+            <div class="mini"><div class="lab">Speed</div><div class="val" id="pSpeed">--</div></div>
+            <div class="mini"><div class="lab">Lap</div><div class="val" id="pLap">--</div></div>
+            <div class="mini"><div class="lab">Position</div><div class="val" id="pPos">--</div></div>
+          </div>
+
+          <div class="profileStats">
+            <div class="mini"><div class="lab">Fuel</div><div class="val" id="pFuel">--</div></div>
+            <div class="mini"><div class="lab">G Total</div><div class="val" id="pG">--</div></div>
+            <div class="mini"><div class="lab">Pit</div><div class="val" id="pPit">--</div></div>
+          </div>
+
+          <div class="tireGrid" id="tireGrid"></div>
+
+          <div class="btnRow">
+            <button class="btn" id="pitTiresFuelBtn">PIT (tires + 50kg)</button>
+            <button class="btn" id="pitFuelBtn">PIT (30kg)</button>
+          </div>
+
+          <div class="chartBox">
+            <div class="pill">trend: speed (green), fuel (blue), wear (yellow)</div>
+            <canvas id="trendCanvas" width="900" height="220"></canvas>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>
+
