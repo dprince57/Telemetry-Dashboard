@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 #!/usr/bin/env python3
 
 import yaml
@@ -9,13 +10,21 @@ import time
 import requests
 import json
 from typing import Optional
+=======
+# Updated CarHandler.py
+>>>>>>> 2083306686c7468918346ee4c18a53cf9bf39c0f
 
-G = 9.81
+class CarHandler:
+    def __init__(self):
+        self.rpm = 0
+        self.brake_sensitivity = 1.0  # Adjusted
+        self.cars_in_view = []  # For multi-car visibility
 
-# Physics constants
-buffer_m = 5
-rho_default = 1.225
+    def update_rpm(self, new_rpm):
+        self.rpm = new_rpm
+        self.downshift_logic()
 
+<<<<<<< HEAD
 # Racing constants
 DRAFT_DISTANCE_M = 15.0
 DRAFT_REDUCTION = 0.15
@@ -33,12 +42,17 @@ PIT_WALL_HOST = "192.168.0.212"  # Pit wall server
 PIT_WALL_PORT = 5000
 TELEMETRY_SEND_INTERVAL = 0.5  # Send telemetry every 0.5 seconds
 
+=======
+    def downshift_logic(self):
+        lower_rpm_threshold = 1500  # Lowered threshold
+        if self.rpm < lower_rpm_threshold:
+            self.downshift()
+>>>>>>> 2083306686c7468918346ee4c18a53cf9bf39c0f
 
-@dataclass
-class TireState:
-    temp_C: float = 70.0
-    wear: float = 0.0
+    def downshift(self):
+        print("Downshifting...")
 
+<<<<<<< HEAD
 @dataclass
 class CarSpec:
     fuel_onboard_kg: float
@@ -1001,3 +1015,10 @@ def run_sim(car: CarState, dt: float, track: TrackHandler.Track, sim_t: float,
         "g_total": car.gforces.total,
     }
 
+=======
+    def detect_other_cars(self):
+        # Logic to detect other cars in the vicinity
+
+    def avoid_collision(self):
+        # Logic to avoid collision with other cars
+>>>>>>> 2083306686c7468918346ee4c18a53cf9bf39c0f
