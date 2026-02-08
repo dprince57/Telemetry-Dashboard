@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 #!/usr/bin/env python3
 
 import yaml
@@ -10,9 +9,6 @@ import time
 import requests
 import json
 from typing import Optional
-=======
-# Updated CarHandler.py
->>>>>>> 2083306686c7468918346ee4c18a53cf9bf39c0f
 
 class CarHandler:
     def __init__(self):
@@ -24,35 +20,28 @@ class CarHandler:
         self.rpm = new_rpm
         self.downshift_logic()
 
-<<<<<<< HEAD
-# Racing constants
 DRAFT_DISTANCE_M = 15.0
 DRAFT_REDUCTION = 0.15
 OVERTAKE_DISTANCE_M = 30.0
 SAFE_FOLLOW_DISTANCE_M = 8.0
 TRACK_WIDTH_M = 12.0
 
-# Pit stop constants
 PIT_LANE_SPEED_LIMIT = 13.9
 TIRE_CHANGE_TIME = 3.0
 REFUEL_RATE_KG_PER_SEC = 12.0
 
-# Network configuration
 PIT_WALL_HOST = "192.168.0.212"  # Pit wall server
 PIT_WALL_PORT = 5000
 TELEMETRY_SEND_INTERVAL = 0.5  # Send telemetry every 0.5 seconds
 
-=======
     def downshift_logic(self):
         lower_rpm_threshold = 1500  # Lowered threshold
         if self.rpm < lower_rpm_threshold:
             self.downshift()
->>>>>>> 2083306686c7468918346ee4c18a53cf9bf39c0f
 
     def downshift(self):
         print("Downshifting...")
 
-<<<<<<< HEAD
 @dataclass
 class CarSpec:
     fuel_onboard_kg: float
@@ -162,7 +151,6 @@ def init_car(car_id: int, spec_path: str, aggression: float = 0.7, is_player: bo
     return car
 
 
-# ============= Network Communication =============
 
 def send_telemetry_to_pit_wall(car: CarState, sim_t: float, track: Optional[TrackHandler.Track] = None) -> None:
     """Send telemetry data to pit wall server.
@@ -185,12 +173,10 @@ def send_telemetry_to_pit_wall(car: CarState, sim_t: float, track: Optional[Trac
             lap_len = None
 
     telemetry = {
-        # identity + timing
         "car_id": car.car_id,
         "sim_time": sim_t,
         "last_update": time.time(),
 
-        # race state
         "laps": car.laps,
         "track_position": car.track_position,
         "speed_mps": car.velocity_mps,
@@ -199,11 +185,9 @@ def send_telemetry_to_pit_wall(car: CarState, sim_t: float, track: Optional[Trac
         "pit_stops": car.pit_stops_completed,
         "is_drafting": car.is_drafting,
 
-        # driver inputs (if present in sim)
         "throttle": car.throttle,
         "brake": car.brake,
 
-        # tires: temps + wear (flat keys for UI convenience)
         "tire_FL_temp_C": car.tire_FL.temp_C,
         "tire_FR_temp_C": car.tire_FR.temp_C,
         "tire_RL_temp_C": car.tire_RL.temp_C,
@@ -214,13 +198,11 @@ def send_telemetry_to_pit_wall(car: CarState, sim_t: float, track: Optional[Trac
         "tire_RR_wear": car.tire_RR.wear,
         "avg_tire_wear": avg_tire_wear,
 
-        # brakes
         "brake_FL_temp_C": car.brake_FL_C,
         "brake_FR_temp_C": car.brake_FR_C,
         "brake_RL_temp_C": car.brake_RL_C,
         "brake_RR_temp_C": car.brake_RR_C,
 
-        # g forces (flat + structured)
         "g_longitudinal": car.gforces.longitudinal,
         "g_lateral": car.gforces.lateral,
         "g_vertical": car.gforces.vertical,
@@ -232,11 +214,9 @@ def send_telemetry_to_pit_wall(car: CarState, sim_t: float, track: Optional[Trac
             "total": car.gforces.total,
         },
 
-        # track metadata (optional)
         "lap_length_meter": lap_len,
     }
 
-    # Legacy keys (older dashboard variants)
     telemetry["position"] = telemetry["track_position"]
     telemetry["velocity_mps"] = telemetry["speed_mps"]
     telemetry["in_pit"] = telemetry["in_pit_lane"]
@@ -246,7 +226,6 @@ def send_telemetry_to_pit_wall(car: CarState, sim_t: float, track: Optional[Trac
         requests.post(url, json=telemetry, timeout=0.15)
         car.last_telemetry_send = sim_t
     except Exception:
-        # Silent fail - don't disrupt simulation
         pass
 
 
@@ -269,7 +248,6 @@ def check_pit_command_from_wall(car: CarState) -> None:
         pass
 
 
-# ============= Pit Stop Execution =============
 
 def _wrap_dist(a: float, b: float, lap: float) -> float:
     a %= lap
@@ -280,11 +258,6 @@ def _wrap_dist(a: float, b: float, lap: float) -> float:
 
 def _execute_pit_stop(car: CarState, dt: float, track: TrackHandler.Track) -> None:
     """DRIVE-THROUGH PIT ONLY (no stopping, no service).
-
-    Behavior:
-      - If car.pit_command.should_pit becomes True, car will enter pit-speed zone near pit_entry_position.
-      - While in pit lane: cap speed to PIT_LANE_SPEED_LIMIT.
-      - Exit pit-speed zone near pit_exit_position.
     """
     lap = float(getattr(track, "lap_length_meter", 0.0) or 0.0)
     if lap <= 0:
@@ -293,18 +266,15 @@ def _execute_pit_stop(car: CarState, dt: float, track: TrackHandler.Track) -> No
     pit_entry = float(getattr(track, "pit_entry_position", 0.0) or 0.0)
     pit_exit = float(getattr(track, "pit_exit_position", 0.0) or 0.0)
 
-    # Enter pit-speed zone when commanded and near entry (wrap-safe)
     if car.pit_command.should_pit and not car.in_pit_lane:
         if _wrap_dist(car.track_position, pit_entry, lap) < 50.0:
             car.in_pit_lane = True
             car.pit_command.pit_in_progress = True
 
-    # While in pit lane: cap speed (never stop)
     if car.in_pit_lane:
         if car.velocity_mps > PIT_LANE_SPEED_LIMIT:
             car.velocity_mps = PIT_LANE_SPEED_LIMIT
 
-        # Exit when near pit_exit (wrap-safe)
         if _wrap_dist(car.track_position, pit_exit, lap) < 15.0:
             car.in_pit_lane = False
             car.pit_command.should_pit = False
@@ -323,7 +293,6 @@ def _calculate_fuel_consumption(car: CarState, dt: float) -> None:
     car.carSpec.fuel_onboard_kg = max(0.0, car.carSpec.fuel_onboard_kg - consumption)
 
 
-# ============= G-Force Calculation =============
 
 def _calculate_gforces(car: CarState, dt: float, track: TrackHandler.Track) -> None:
     
@@ -361,7 +330,6 @@ def _calculate_gforces(car: CarState, dt: float, track: TrackHandler.Track) -> N
     car.prev_velocity_mps = car.velocity_mps
 
 
-# ============= Multi-Car Racing Functions =============
 
 def _get_relative_position(car: CarState, other: CarState, track_length: float) -> float:
     diff = other.track_position - car.track_position
@@ -468,7 +436,6 @@ def _calculate_traffic_speed_limit(car: CarState, car_ahead: CarState,
         return 999.0
 
 
-# ============= Helper Functions =============
 
 def _find_next_corner(car: CarState, track: TrackHandler.Track) -> bool:
     for seg in track.segments:
@@ -997,11 +964,10 @@ def run_sim(car: CarState, dt: float, track: TrackHandler.Track, sim_t: float,
     # Send telemetry to pit wall
     send_telemetry_to_pit_wall(car, sim_t, track)
 
-    # Debug output
-    print(
+    '''print(
         f"Car {car.car_id} | Speed: {car.velocity_mps:.1f} m/s | "
         f"G:{car.gforces.total:.1f} | Fuel: {car.carSpec.fuel_onboard_kg:.1f}kg"
-    )
+    )'''
 
     end_time = time.time()
 
@@ -1015,10 +981,8 @@ def run_sim(car: CarState, dt: float, track: TrackHandler.Track, sim_t: float,
         "g_total": car.gforces.total,
     }
 
-=======
     def detect_other_cars(self):
         # Logic to detect other cars in the vicinity
 
     def avoid_collision(self):
         # Logic to avoid collision with other cars
->>>>>>> 2083306686c7468918346ee4c18a53cf9bf39c0f
